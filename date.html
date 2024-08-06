@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Count Your Last Days</title>
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background: linear-gradient(135deg, #f0f0f0 25%, #e8e8e8 75%);
+            color: #333;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            padding: 10px;
+            box-sizing: border-box;
+        }
+        .container {
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 15px;
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            max-width: 500px;
+            width: 100%;
+        }
+        h1 {
+            color: #007BFF;
+            margin-bottom: 20px;
+            font-size: 28px;
+            font-weight: 700;
+        }
+        #hoursDisplay {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            padding: 10px;
+            background-color: #f9f9f9;
+            border-radius: 8px;
+            border: 1px solid #e0e0e0;
+        }
+        form {
+            margin-bottom: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 20px;
+        }
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            width: 100%;
+        }
+        label {
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+        input[type="date"] {
+            padding: 12px 15px;
+            border: 1px solid #ccc;
+            border-radius: 8px;
+            font-size: 16px;
+            width: 100%;
+            max-width: 250px;
+        }
+        button {
+            padding: 12px 30px;
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+            transition: background-color 0.3s, transform 0.3s;
+            width: 100%;
+            max-width: 250px;
+        }
+        button:hover {
+            background-color: #0056b3;
+            transform: translateY(-2px);
+        }
+        #daysContainer {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+            gap: 15px;
+            justify-content: center;
+        }
+        .day {
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 16px;
+            text-align: center;
+            background: #fff;
+            color: #333;
+        }
+        .day:hover {
+            background-color: #f0f0f0;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+        }
+        .day.blocked {
+            background-color: #333;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Date Range Selector</h1>
+        <div id="hoursDisplay">Total Hours: 0</div>
+        <form id="dateForm">
+            <div class="input-group">
+                <label for="startDate">Start Date:</label>
+                <input type="date" id="startDate" name="startDate" required>
+            </div>
+            <div class="input-group">
+                <label for="endDate">End Date:</label>
+                <input type="date" id="endDate" name="endDate" required>
+            </div>
+            <button type="submit">Generate Days</button>
+        </form>
+        <div id="daysContainer"></div>
+    </div>
+    <script>
+        let blockedDays = JSON.parse(localStorage.getItem('blockedDays')) || {};
+        let startDate, endDate;
+        let totalHours = 0;
+
+        document.getElementById('dateForm').addEventListener('submit', function(event) {
+            event.preventDefault();
+            
+            startDate = new Date(document.getElementById('startDate').value);
+            endDate = new Date(document.getElementById('endDate').value);
+            
+            if (startDate > endDate) {
+                alert('Start date should be before end date.');
+                return;
+            }
+            
+            generateDays();
+            saveToLocalStorage();
+        });
+
+        function generateDays() {
+            const daysContainer = document.getElementById('daysContainer');
+            daysContainer.innerHTML = ''; 
+            
+            let currentDate = new Date(startDate);
+            totalHours = 0;
+            
+            while (currentDate <= endDate) {
+                const dayElement = document.createElement('div');
+                dayElement.className = 'day';
+                const dateString = formatDate(currentDate);
+                dayElement.innerText = dateString;
+                
+                if (!blockedDays[dateString]) {
+                    totalHours += 24;
+                } else {
+                    dayElement.classList.add('blocked');
+                }
+                
+                dayElement.addEventListener('click', function() {
+                    this.classList.toggle('blocked');
+                    const date = this.innerText;
+                    if (this.classList.contains('blocked')) {
+                        blockedDays[date] = true;
+                        totalHours -= 24;
+                    } else {
+                        delete blockedDays[date];
+                        totalHours += 24;
+                    }
+                    updateHoursDisplay();
+                    saveToLocalStorage();
+                });
+                
+                daysContainer.appendChild(dayElement);
+                currentDate.setDate(currentDate.getDate() + 1);
+            }
+            updateHoursDisplay();
+        }
+
+        function updateHoursDisplay() {
+            document.getElementById('hoursDisplay').innerText = `Total Hours: ${totalHours}`;
+        }
+
+        function formatDate(date) {
+            const options = { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' };
+            return date.toLocaleDateString('en-US', options);
+        }
+
+        function saveToLocalStorage() {
+            localStorage.setItem('blockedDays', JSON.stringify(blockedDays));
+            localStorage.setItem('startDate', startDate.toISOString());
+            localStorage.setItem('endDate', endDate.toISOString());
+            localStorage.setItem('totalHours', totalHours);
+        }
+
+        window.addEventListener('load', function() {
+            const savedStartDate = localStorage.getItem('startDate');
+            const savedEndDate = localStorage.getItem('endDate');
+            const savedTotalHours = localStorage.getItem('totalHours');
+            
+            if (savedStartDate && savedEndDate) {
+                document.getElementById('startDate').value = new Date(savedStartDate).toISOString().split('T')[0];
+                document.getElementById('endDate').value = new Date(savedEndDate).toISOString().split('T')[0];
+                startDate = new Date(savedStartDate);
+                endDate = new Date(savedEndDate);
+                totalHours = parseInt(savedTotalHours) || 0;
+                generateDays();
+                updateHoursDisplay();
+            }
+        });
+    </script>
+</body>
+</html>
